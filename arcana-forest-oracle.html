@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcana Forest | タロット占い</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Serif+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest-deep: #0a1a0f;
+    --forest-mid: #1a3a20;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: #8a6f2e;
+    --text-main: #e8dfc8;
+    --text-muted: #a09070;
+    --card-back: #111f15;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background-color: var(--forest-deep);
+    color: var(--text-main);
+    font-family: 'Noto Serif JP', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(45,90,53,0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(74,143,168,0.08) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(10,26,15,0.95), transparent);
+  }
+  .nav-logo {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    color: var(--gold);
+    letter-spacing: 0.2em;
+    text-decoration: none;
+  }
+  .oracle-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 700px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 20px 60px;
+  }
+  .phase { display: none; flex-direction: column; align-items: center; width: 100%; }
+  .phase.active { display: flex; }
+  .phase-eyebrow {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.5em;
+    color: var(--gold-dim);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .phase-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.2rem, 3vw, 1.6rem);
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .phase-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 2;
+    text-align: center;
+    margin-bottom: 40px;
+    max-width: 400px;
+  }
+  .theme-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 40px;
+  }
+  .theme-btn {
+    padding: 16px;
+    border: 1px solid rgba(201,168,76,0.3);
+    background: none;
+    color: var(--text-muted);
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 0.05em;
+  }
+  .theme-btn:hover, .theme-btn.selected {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201,168,76,0.05);
+  }
+  .spread-select-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 40px;
+  }
+  .spread-select-btn {
+    padding: 14px 12px;
+    border: 1px solid rgba(201,168,76,0.2);
+    background: none;
+    color: var(--text-muted);
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+    position: relative;
+  }
+  .spread-badge-mini {
+    font-family: 'Cinzel', serif;
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    color: var(--gold-dim);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .spread-select-btn:hover:not(.locked), .spread-select-btn.selected {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201,168,76,0.05);
+  }
+  .spread-select-btn.locked { opacity: 0.4; cursor: not-allowed; }
+  .lock-icon { position: absolute; top: 10px; right: 10px; font-size: 0.7rem; color: var(--gold-dim); }
+  .next-btn {
+    padding: 14px 48px;
+    border: 1px solid var(--gold);
+    background: none;
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.3em;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 16px;
+  }
+  .next-btn:hover { background: var(--gold); color: var(--forest-deep); }
+  .next-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .draw-instruction {
+    font-size: 1rem;
+    color: var(--gold-light);
+    letter-spacing: 0.15em;
+    text-align: center;
+    margin-bottom: 32px;
+    padding: 16px 28px;
+    border: 1px solid rgba(201,168,76,0.5);
+    background: rgba(201,168,76,0.08);
+    text-shadow: 0 0 20px rgba(201,168,76,0.4);
+    font-weight: 500;
+  }
+  .deck-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    width: 100%;
+  }
+  .deck-single {
+    position: relative;
+    width: 110px;
+    height: 183px;
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+  .deck-single:hover { transform: translateY(-8px); }
+  .deck-shadow {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    background: var(--card-back);
+  }
+  .deck-shadow:nth-child(1) { transform: translate(-4px, -4px); opacity: 0.3; }
+  .deck-shadow:nth-child(2) { transform: translate(-2px, -2px); opacity: 0.5; }
+  .deck-shadow:nth-child(3) { transform: translate(0, 0); opacity: 1; }
+  .deck-shadow .cbd {
+    width: calc(100% - 12px);
+    height: calc(100% - 12px);
+    border: 1px solid rgba(201,168,76,0.3);
+    margin: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 90px);
+    gap: 12px;
+    justify-content: center;
+  }
+  .tarot-card {
+    width: 90px;
+    height: 150px;
+    position: relative;
+    cursor: pointer;
+    perspective: 1000px;
+    opacity: 0;
+    transform: translateX(-50px);
+    transition: opacity 0.35s, transform 0.35s;
+  }
+  .tarot-card.deal-in { opacity: 1; transform: translateX(0); }
+  .tarot-card.selected-card { box-shadow: 0 0 24px rgba(201,168,76,0.6); }
+  .card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s ease;
+  }
+  .tarot-card.flipped .card-inner { transform: rotateY(180deg); }
+  .card-front, .card-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-back { background: var(--card-back); }
+  .cbd2 {
+    width: calc(100% - 12px);
+    height: calc(100% - 12px);
+    border: 1px solid rgba(201,168,76,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cbd2 svg { width: 50%; opacity: 0.4; }
+  .card-front {
+    background: linear-gradient(135deg, #0f2416, #1a3a20);
+    transform: rotateY(180deg);
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+  }
+  .card-front .cn { font-family: 'Cinzel', serif; font-size: 0.6rem; color: var(--gold-dim); }
+  .card-front .cs { font-size: 1.4rem; color: var(--gold); opacity: 0.8; }
+  .card-front .cname {
+    font-family: 'Cinzel', serif;
+    font-size: 0.5rem;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .tarot-card:hover .card-back {
+    border-color: var(--gold-light);
+    box-shadow: 0 0 16px rgba(201,168,76,0.25);
+  }
+  .deck-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-align: center;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  .result-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    width: 100%;
+    max-width: 560px;
+  }
+  .result-cards-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .result-card-info { text-align: center; }
+  .result-card-name { font-family: 'Cinzel', serif; font-size: 1.2rem; color: var(--gold); letter-spacing: 0.1em; }
+  .result-card-num { font-family: 'Cinzel', serif; font-size: 0.65rem; color: var(--gold-dim); letter-spacing: 0.2em; margin-top: 4px; }
+  .result-divider { width: 120px; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dim), transparent); }
+  .result-theme-label { font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.3em; color: var(--gold-dim); text-align: center; }
+  .result-text {
+    font-size: 1rem;
+    line-height: 2.2;
+    color: #f5f0e8;
+    text-align: center;
+    padding: 32px;
+    border: 1px solid rgba(201,168,76,0.5);
+    background: rgba(20, 45, 25, 0.9);
+    min-height: 120px;
+    width: 100%;
+    letter-spacing: 0.06em;
+    transition: opacity 0.8s ease;
+  }
+  .result-text .rtitle {
+    display: block;
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem;
+    color: var(--gold);
+    letter-spacing: 0.15em;
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px rgba(201,168,76,0.4);
+  }
+  .result-text .radvice {
+    display: block;
+    margin-top: 20px;
+    color: var(--gold-light);
+    font-size: 0.9rem;
+  }
+  .result-actions { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .action-btn {
+    padding: 12px 32px;
+    border: 1px solid rgba(201,168,76,0.4);
+    background: none;
+    color: var(--text-muted);
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .action-btn:hover, .action-btn.primary { border-color: var(--gold); color: var(--gold); }
+  .particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .particle {
+    position: absolute;
+    width: 1px; height: 1px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: floatUp linear infinite;
+    opacity: 0;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(100vh); opacity: 0; }
+    10% { opacity: 0.5; }
+    90% { opacity: 0.2; }
+    100% { transform: translateY(-10vh); opacity: 0; }
+  }
+  @media (max-width: 400px) {
+    .cards-grid { grid-template-columns: repeat(3, 75px); gap: 8px; }
+    .tarot-card { width: 75px; height: 125px; }
+    .theme-grid, .spread-select-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="particles" id="particles"></div>
+<nav><a href="arcana-forest.html" class="nav-logo">ARCANA FOREST</a></nav>
+<div class="oracle-container">
+
+  <!-- フェーズ1 テーマ選択 -->
+  <div class="phase active" id="phase-theme">
+    <p class="phase-eyebrow">Step 1 of 3</p>
+    <h2 class="phase-title">何を占いますか？</h2>
+    <p class="phase-desc">カードに問いかけるテーマをお選びください。</p>
+    <div class="theme-grid">
+      <button class="theme-btn" id="btn-fortune">✦ 総合運勢</button>
+      <button class="theme-btn" id="btn-love">✦ 恋愛</button>
+      <button class="theme-btn" id="btn-work">✦ 仕事・キャリア</button>
+      <button class="theme-btn" id="btn-relation">✦ 対人関係</button>
+    </div>
+    <button class="next-btn" id="theme-next" disabled>次へ</button>
+  </div>
+
+  <!-- フェーズ2 展開方法選択 -->
+  <div class="phase" id="phase-spread">
+    <p class="phase-eyebrow">Step 2 of 3</p>
+    <h2 class="phase-title">展開方法を選んでください</h2>
+    <p class="phase-desc">無料プランはワンオラクル・ツーオラクルをご利用いただけます。</p>
+    <div class="spread-select-grid">
+      <button class="spread-select-btn" id="btn-one"><span class="spread-badge-mini">FREE · 1 CARD</span>ワンオラクル</button>
+      <button class="spread-select-btn locked"><span class="spread-badge-mini">COMING SOON · 2 CARDS</span>ツーオラクル<span class="lock-icon">🔒</span></button>
+      <button class="spread-select-btn locked"><span class="spread-badge-mini">PREMIUM · 3 CARDS</span>スリーオラクル<span class="lock-icon">🔒</span></button>
+      <button class="spread-select-btn locked"><span class="spread-badge-mini">PREMIUM · 3 CARDS</span>ゴールデントリン<span class="lock-icon">🔒</span></button>
+      <button class="spread-select-btn locked"><span class="spread-badge-mini">PREMIUM · 5 CARDS</span>ダイヤモンドクロス<span class="lock-icon">🔒</span></button>
+      <button class="spread-select-btn locked"><span class="spread-badge-mini">PREMIUM · 5 CARDS</span>ギリシャ十字<span class="lock-icon">🔒</span></button>
+      <button class="spread-select-btn locked"><span class="spread-badge-mini">PREMIUM · 6 CARDS</span>ピラミッド<span class="lock-icon">🔒</span></button>
+      <button class="spread-select-btn locked"><span class="spread-badge-mini">PREMIUM · 7 CARDS</span>ヘキサグラム<span class="lock-icon">🔒</span></button>
+    </div>
+    <button class="next-btn" id="spread-next" disabled>カードを引く</button>
+  </div>
+
+  <!-- フェーズ3 カード引き -->
+  <div class="phase" id="phase-draw">
+    <p class="phase-eyebrow">Step 3 of 3</p>
+    <p class="draw-instruction" id="draw-instruction">気持ちを落ち着かせてタロットに触れてください</p>
+    <div class="deck-area">
+      <div class="deck-single" id="deck-single">
+        <div class="deck-shadow"><div class="cbd"><svg viewBox="0 0 60 60" fill="none"><circle cx="30" cy="30" r="28" stroke="#c9a84c" stroke-width="0.5"/><polygon points="30,5 55,43 5,43" stroke="#c9a84c" stroke-width="0.5" fill="none"/><polygon points="30,55 5,17 55,17" stroke="#c9a84c" stroke-width="0.5" fill="none"/></svg></div></div>
+        <div class="deck-shadow"><div class="cbd"></div></div>
+        <div class="deck-shadow"><div class="cbd"><svg viewBox="0 0 60 60" fill="none"><circle cx="30" cy="30" r="28" stroke="#c9a84c" stroke-width="0.5"/><polygon points="30,5 55,43 5,43" stroke="#c9a84c" stroke-width="0.5" fill="none"/><polygon points="30,55 5,17 55,17" stroke="#c9a84c" stroke-width="0.5" fill="none"/></svg></div></div>
+      </div>
+      <div class="cards-grid" id="cards-grid" style="display:none"></div>
+      <p class="deck-hint" id="deck-hint">タップしてシャッフル</p>
+    </div>
+  </div>
+
+  <!-- フェーズ4 結果 -->
+  <div class="phase" id="phase-result">
+    <p class="phase-eyebrow" id="result-spread-label">ONE ORACLE</p>
+    <div class="result-area">
+      <div class="result-cards-row" id="result-cards-row"></div>
+      <div class="result-divider"></div>
+      <p class="result-theme-label" id="result-theme-label">運勢の鑑定</p>
+      <div class="result-text" id="result-text"></div>
+      <div class="result-actions">
+        <button class="action-btn primary" id="btn-retry">もう一度占う</button>
+        <button class="action-btn" id="btn-top">トップへ戻る</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+var majorArcana = [
+  {num:"O", name:"愚者", en:"THE FOOL", symbol:"☽"},
+  {num:"I", name:"魔術師", en:"THE MAGICIAN", symbol:"☿"},
+  {num:"II", name:"女教皇", en:"THE HIGH PRIESTESS", symbol:"✦"},
+  {num:"III", name:"女帝", en:"THE EMPRESS", symbol:"♀"},
+  {num:"IV", name:"皇帝", en:"THE EMPEROR", symbol:"♂"},
+  {num:"V", name:"教皇", en:"THE HIEROPHANT", symbol:"✙"},
+  {num:"VI", name:"恋人", en:"THE LOVERS", symbol:"♡"},
+  {num:"VII", name:"戦車", en:"THE CHARIOT", symbol:"◈"},
+  {num:"VIII", name:"力", en:"STRENGTH", symbol:"∞"},
+  {num:"IX", name:"隠者", en:"THE HERMIT", symbol:"◯"},
+  {num:"X", name:"運命の輪", en:"WHEEL OF FORTUNE", symbol:"⊕"},
+  {num:"XI", name:"正義", en:"JUSTICE", symbol:"⚖"},
+  {num:"XII", name:"吊られた男", en:"THE HANGED MAN", symbol:"⌾"},
+  {num:"XIII", name:"死神", en:"DEATH", symbol:"✦"},
+  {num:"XIV", name:"節制", en:"TEMPERANCE", symbol:"◇"},
+  {num:"XV", name:"悪魔", en:"THE DEVIL", symbol:"⛧"},
+  {num:"XVI", name:"塔", en:"THE TOWER", symbol:"⚡"},
+  {num:"XVII", name:"星", en:"THE STAR", symbol:"★"},
+  {num:"XVIII", name:"月", en:"THE MOON", symbol:"☾"},
+  {num:"XIX", name:"太陽", en:"THE SUN", symbol:"☀"},
+  {num:"XX", name:"審判", en:"JUDGEMENT", symbol:"☆"},
+  {num:"XXI", name:"世界", en:"THE WORLD", symbol:"◎"}
+];
+
+var readings = {
+  "運勢": {
+    "愚者": ["愚者", "今、あなたの前には全く新しい道が広がっています。これまでの常識や固定概念を手放し、白紙の状態で新たな一歩を踏み出す時が来ています。予測不能な展開が待っていますが、それこそがあなたの運勢を大きく動かす鍵です。恐れずに前進してください。", "直感を信じ、今まで挑戦したことのないことに飛び込む勇気を持ってください。その一歩が思いがけない幸運を引き寄せます。"],
+    "魔術師": ["魔術師", "あなたには今、物事を実現させるための力と才能が十分に備わっています。意志の力が最高潮に達しており、行動を起こせば望む結果を手にできる時期です。アイデアを形にする絶好のタイミングが訪れています。", "頭の中で描いているビジョンを、今すぐ具体的な行動に移してください。あなたの意志と集中力が現実を動かします。"],
+    "女教皇": ["女教皇", "今は行動よりも内省の時。表面に見えていることだけでなく、その奥に潜む真実に目を向けてください。あなたの直感は今非常に鋭く、静かに耳を傾ければ答えが自然と浮かび上がってきます。", "焦らず、ゆっくりと状況を見極めることで最善の選択肢が明らかになるでしょう。静寂の中にこそ答えがあります。"],
+    "女帝": ["女帝", "豊かさと繁栄の気配が漂っています。あなたの努力が実を結ぶ時期が近づいており、物質的にも精神的にも満たされる暗示があります。自然の流れに身を任せ、今あるものに感謝することでさらなる豊かさが引き寄せられます。", "創造的な活動に積極的に取り組んでください。あなたの手が触れるものに、実りをもたらす力があります。"],
+    "皇帝": ["皇帝", "今のあなたには強いリーダーシップと実行力が宿っています。計画を立て、着実に実行する時。感情に流されず、理性と秩序をもって物事を進めることで大きな成果が得られます。", "自信を持って決断し、責任感を持って行動することが運勢を開きます。あなたのリーダーシップを信じてください。"],
+    "教皇": ["教皇", "信頼できる人物からの助言や、伝統的な知恵の中に重要なヒントが隠されています。今は独自の判断よりも、実績ある方法や先人の教えを参考にすることで道が開けます。", "メンターや師となる人物との縁を大切にし、学びの機会を積極的に求めてください。精神的な成長が運勢を高めます。"],
+    "恋人": ["恋人", "重要な選択の時が来ています。人生において本当に大切なものを見極め、真摯に向き合う必要があります。心が本当に求めているものに従ってください。", "自分の気持ちに正直であることが最善の選択を導きます。価値観を共にできる存在との縁を大切にしてください。"],
+    "戦車": ["戦車", "勝利と前進の気運が高まっています。困難があっても意志の力で乗り越えられる時期です。目標に向かって一直線に進んでください。迷いを捨て、全力で突き進むことで大きな成果が手に入ります。", "自分をコントロールしながら情熱的に突き進んでください。あなたには勝ち抜く力が備わっています。"],
+    "力": ["力", "外側の力ではなく、内なる強さが試される時期です。困難な状況も、忍耐と思いやりをもって接することで乗り越えられます。感情的にならず、穏やかに、しかし確固たる意志で対処することが鍵。", "あなたの中にある真の強さを信じてください。その柔らかな強さが周囲の人々をも動かし、運勢を味方につけます。"],
+    "隠者": ["隠者", "一人で静かに考える時間が必要な時期です。内省と瞑想を通じて、自分が本当に求めているものが見えてきます。喧騒から離れ、自分自身と向き合うことで大切な気づきが生まれます。", "焦らず、じっくりと答えを探してください。この内なる探求があなたの運勢に深みと方向性をもたらします。"],
+    "運命の輪": ["運命の輪", "大きな転換点が訪れています。これまでの流れが変わり、新たなサイクルが始まる予兆です。変化を恐れず、流れに乗ることで幸運が味方します。タイミングが重要な時期です。", "チャンスが訪れたら迷わず掴んでください。運命の歯車が動き出しており、あなたの行動次第で大きな飛躍が期待できます。"],
+    "正義": ["正義", "公正な判断と誠実な行動が求められています。過去の行いに対する結果が現れる時期でもあり、善いことをしてきた人には報いが訪れます。バランスを大切にし、感情ではなく事実に基づいて判断することが運勢を開きます。", "正しい道を歩むことへの揺るぎない姿勢が、最終的な勝利をもたらします。"],
+    "吊られた男": ["吊られた男", "今は一時的な停滞の時期ですが、これは無駄な時間ではありません。視点を変えることで、今まで見えていなかった真実が明らかになります。焦らず待つことが最善策です。", "この静止の時間を自己成長に充ててください。次の大きな飛躍のための準備期間として活かすことが大切です。"],
+    "死神": ["死神", "終わりは新たな始まり。古いものを手放すことで、新しいエネルギーが流れ込んできます。変容の時期であり、過去に執着することなく前に進むことが運勢を開きます。", "手放すことへの勇気を持ってください。それがあなたの人生に全く新しい章をもたらします。"],
+    "節制": ["節制", "バランスと調和が鍵となる時期です。極端な行動を避け、着実に物事を進めることで安定した結果が得られます。焦りは禁物。忍耐強く、一歩一歩確実に積み重ねてください。", "心身ともに整え、穏やかな状態を保つことが運勢を高めます。異なる要素の調和が想像以上の成果を生みます。"],
+    "悪魔": ["悪魔", "何かにとらわれていることに気づく時期です。物質的な欲求や恐れ、固定観念があなたの自由を妨げていないか見直してください。執着を手放すことで大きな解放感と新たな可能性が生まれます。", "鎖は実は幻想かもしれません。自分の意志で断ち切る力があなたにはあります。真の自由に向かって踏み出してください。"],
+    "塔": ["塔", "突然の変化や予期せぬ出来事が訪れるかもしれません。しかしこれは古い構造が崩れ、より良いものが建つための必要なプロセスです。", "柔軟に対応し、変化を受け入れることで新たな強固な基盤が築かれます。嵐の後には必ず晴れ間が来ます。"],
+    "星": ["星", "希望の光が差し込んでいます。困難な時期を経て、癒しと再生のエネルギーが満ちてきています。夢や理想を信じ、前向きな気持ちを持ち続けてください。", "インスピレーションが豊かに湧く時期です。希望を持ち続けることが、運勢を輝かしいものにします。"],
+    "月": ["月", "物事がはっきりしない、曖昧な時期です。見えている現実の裏に何かが隠れている可能性があります。不安や恐れが出てきやすい時期ですが、それらは実体のない影かもしれません。", "慎重に行動し、全てが明らかになるまで大きな決断は待ちましょう。直感と冷静さの両方を大切にしてください。"],
+    "太陽": ["太陽", "明るく輝かしいエネルギーに満ちています。成功、喜び、活力が溢れる絶好の時期。自信を持って前に進んでください。あなたの才能と努力が周囲に認められます。", "全力で楽しみながら挑戦することが最大の運を呼び込みます。ポジティブなエネルギーが良い縁や機会を引き寄せます。"],
+    "審判": ["審判", "過去を振り返り、新たな自分に生まれ変わる覚醒の時です。内なる呼び声に従い、本当の使命や目的に気づく機会が訪れています。過去の後悔を手放し、許すことで魂が軽くなります。", "以前は気づかなかった才能や可能性が開花する予兆があります。新たなステージへと踏み出してください。"],
+    "世界": ["世界", "一つの大きなサイクルが完成に向かっています。努力が実を結び、達成感と充実感に満ちた時期が訪れます。全てが統合され、完全な形での成功を手にするでしょう。", "この達成を祝福し、次なる大きな旅への準備を整えてください。あなたはすでに次のサイクルの扉の前に立っています。"]
+  },
+  "恋愛": {
+    "愚者": ["愚者", "恋愛において、純粋な心で新たな出会いや関係を楽しむ時期です。過去の傷や先入観を手放し、白紙の状態で相手と向き合うことで素敵な縁が生まれます。", "恋愛を深刻に考えすぎず、軽やかに楽しむ姿勢が新たな扉を開きます。予期せぬところからロマンスが芽生える可能性があります。"],
+    "魔術師": ["魔術師", "あなたの魅力が最大限に発揮される時期です。積極的なアプローチが実を結びやすく、言葉や行動で気持ちを表現することで相手の心を動かせます。", "今こそ想いを行動に変える時。コミュニケーション能力が高まっており、上手く言葉を使うことで恋愛をリードできます。"],
+    "女教皇": ["女教皇", "相手の気持ちを深く読み取る直感が働いています。表面的な言葉よりも、行動や雰囲気から伝わるものを大切にしてください。", "焦らず、ゆっくりと関係を深めることが長続きする愛に繋がります。秘密や謎めいた雰囲気があなたの魅力を高め、相手を惹きつけます。"],
+    "女帝": ["女帝", "愛情豊かで包容力のある時期。与えることの喜びが恋愛をより深いものにします。既存の関係は安定と発展が期待できます。", "自分自身を大切にすることで、相手からも大切にされる関係が育まれます。自然体でいることが最大の魅力となります。"],
+    "皇帝": ["皇帝", "安定した信頼関係を築く時期です。誠実で責任感のある態度が相手の信頼を得ます。リードする立場になることで関係が深まる可能性も。", "相手の意見も尊重しながら、二人の関係に安定した基盤を作ることが長続きする愛の秘訣です。"],
+    "教皇": ["教皇", "真摯で伝統的な愛の形が実を結ぶ時期。形式を大切にし、誠実に向き合うことで深い信頼関係が生まれます。", "共通の価値観や信念を持つ相手との縁を大切にしてください。結婚や長期的なコミットメントを考えている方には前向きな展開が期待できます。"],
+    "恋人": ["恋人", "深い愛と調和の時期。心から惹かれ合う関係や、価値観の合う相手との出会いが期待できます。重要な選択を迫られることもありますが、心の声に従うことが最善です。", "既存の関係はより深い絆で結ばれ、新しい出会いは運命的な縁となる可能性を秘めています。"],
+    "戦車": ["戦車", "恋愛に積極的に突き進む時期。障害があっても意志の力で乗り越え、望む関係を手に入れられます。", "好きな人へのアプローチは迷わず行動を。相手のペースも考慮しながら進めることで、情熱があなたの心を動かす力となります。"],
+    "力": ["力", "思いやりと忍耐が恋愛を育てる時期。相手の欠点も含めて受け入れる寛大さが、深い愛に繋がります。", "感情的になりがちな場面でも穏やかに対処することで、関係がより強固になります。優しさと強さを兼ね備えたあなたが相手を引きつけます。"],
+    "隠者": ["隠者", "一人の時間を大切にする時期。自分自身を深く理解することで、本当に求める愛の形が見えてきます。", "焦って関係を求めるより、自己成長に集中することで自然と良い縁が引き寄せられます。静かな出会いに縁があります。"],
+    "運命の輪": ["運命の輪", "恋愛における転機が訪れています。新たな出会いや、既存の関係における大きな変化が期待できます。", "タイミングが重要な時期なので、チャンスは逃さず掴んでください。偶然の出会いが大きな意味を持つことになりそうです。"],
+    "正義": ["正義", "誠実さと公平さが恋愛の鍵。正直な気持ちを伝え、相手にも誠実に向き合うことで信頼関係が生まれます。", "バランスの取れた対等な関係を築くことで、長続きする愛が育まれます。自分の気持ちに正直であることが最善です。"],
+    "吊られた男": ["吊られた男", "恋愛において一歩引いて相手を見守る時期。積極的なアプローチよりも、待つことが相手の気持ちを動かすことがあります。", "新たな視点から関係を見直すことで、より深い理解と絆が生まれます。焦らず、じっくりと向き合ってください。"],
+    "死神": ["死神", "恋愛における変容の時期。うまくいっていない関係は自然と終わりを迎え、新たな出会いへの道が開かれます。", "執着を手放すことが、本当の愛を引き寄せる第一歩。変化を前向きに受け入れることで、より良い愛の形が生まれます。"],
+    "節制": ["節制", "穏やかで安定した愛が育まれる時期。焦らず、じっくりと関係を深めることが長続きする愛に繋がります。", "相手とのバランスを大切にし、お互いの違いを尊重することで調和のとれた関係が生まれます。"],
+    "悪魔": ["悪魔", "恋愛における執着や依存を見直す時期。相手に縛られすぎていたり、不健全な関係に気づいたなら、勇気を持って変化を起こしてください。", "真の愛は自由であるべき。お互いを尊重し解放し合える関係こそが本物です。"],
+    "塔": ["塔", "恋愛における突然の変化が訪れるかもしれません。しかしそれは偽りの関係を終わらせ、真実の愛への道を開くためのものです。", "混乱の中でも誠実さを失わず、嵐を乗り越えることで真に信頼できる愛が残ります。"],
+    "星": ["星", "希望に満ちた恋愛の時期。傷ついた心が癒され、新たな愛への扉が開かれます。理想の相手との出会いが期待できます。", "希望を持ち続け、自分を愛することで素晴らしい縁が引き寄せられます。夢見ていた愛の形が現実になりつつあります。"],
+    "月": ["月", "恋愛において曖昧な状況が続くかもしれません。相手の本心が見えにくく、不安を感じることも。", "直感を信じながらも、幻想に惑わされないよう注意してください。全てが明らかになる時を、静かに待ちましょう。"],
+    "太陽": ["太陽", "明るく喜びに満ちた恋愛の時期。純粋な愛情と幸福感が溢れ、相手との関係が輝かしく発展します。", "愛することの喜びを全力で楽しんでください。素直な気持ちが最高の恋愛を生み出します。"],
+    "審判": ["審判", "恋愛において大切な決断と再出発の時期。過去の恋愛から学び、より成熟した愛の形を求めて歩み始めます。", "自分の恋愛パターンを見直し、本当に求める愛に向かって踏み出す覚悟が新たな幸せを呼び込みます。"],
+    "世界": ["世界", "恋愛における完成と成就の時期。長年の願いが叶い、求めていた愛の形が実現します。", "この幸せを大切に育んでください。二人の関係が完成形に近づいており、愛が豊かに満ち溢れています。"]
+  },
+  "仕事": {
+    "愚者": ["愚者", "新しいプロジェクトや仕事への挑戦に絶好のタイミングです。未経験でも恐れず飛び込む姿勢が、思わぬ才能の開花に繋がります。", "失敗を恐れず、学びながら前進する姿勢が長期的なキャリアの成長をもたらします。型にはまらない発想が職場に新風をもたらします。"],
+    "魔術師": ["魔術師", "仕事での能力が最大限に発揮できる時期です。スキルと知識を駆使して、具体的な成果を出せます。企画や提案が通りやすい時期です。", "今持っているリソースを上手く活用することで大きな成果が生まれます。自信を持って実力を示してください。"],
+    "女教皇": ["女教皇", "表面的な情報だけでなく、深く観察することで仕事における重要な洞察が得られます。直感的な判断が正解を指し示している時期。", "急いで動くより、じっくりと情報を収集し分析することが成功への近道です。知識を蓄え、学ぶ姿勢を大切にしてください。"],
+    "女帝": ["女帝", "仕事において豊かな成果が期待できる時期。創造的なアプローチが功を奏し、プロジェクトが実を結びます。", "チームのメンバーを育て、サポートする立場での活躍も期待できます。職場の雰囲気を和らげる能力が評価されます。"],
+    "皇帝": ["皇帝", "リーダーシップを発揮する時期。計画を立て、組織をまとめ、着実に目標に向かって前進できます。", "論理的で体系的なアプローチが評価され、昇進や重要なポジションへの抜擢の可能性もあります。自信を持ってリードしてください。"],
+    "教皇": ["教皇", "伝統や慣習を尊重した働き方が評価される時期。先輩や上司からの指導を素直に受け入れることで大きく成長できます。", "誠実で真摯な姿勢が、長期的な信頼と実績を築きます。教育や指導の立場を任されることも期待できます。"],
+    "恋人": ["恋人", "仕事においてパートナーシップや協力関係が鍵となる時期。共同作業や新たなビジネスパートナーとの出会いに縁があります。", "自分の得意分野と相手の強みを組み合わせることで、一人では達成できない大きな成果が生まれます。"],
+    "戦車": ["戦車", "困難を乗り越え、目標を達成する強い意志力が漲っています。競争や試練があっても正面から立ち向かうことで勝利を手にできます。", "集中力を高め、脇目も振らずに突き進む時期です。強い意志と自律心でどんな目標もクリアできます。"],
+    "力": ["力", "プレッシャーのある状況でも冷静さを保ち、着実に仕事をこなせる時期。感情的にならず、粘り強く取り組むことで難しい課題もクリアできます。", "強引な方法よりも、人の心を動かす丁寧なアプローチが長期的な成功を生みます。"],
+    "隠者": ["隠者", "一人で集中して取り組む仕事が実を結ぶ時期。専門性を深め、自分のペースで着実に成果を積み上げることが大切です。", "周囲のノイズに惑わされず、自分の信じる道を黙々と歩むことが、長期的に大きな評価に繋がります。"],
+    "運命の輪": ["運命の輪", "キャリアにおける大きな転換点が訪れています。転職や異動、新しいプロジェクトへのアサインなど、変化のチャンスが到来しています。", "タイミングを逃さず、積極的に動くことが重要です。勇気ある一歩が大きなキャリアアップに繋がります。"],
+    "正義": ["正義", "公正で誠実な仕事ぶりが評価される時期。契約や交渉事においても、正直さと透明性が信頼を生みます。", "努力に見合った正当な評価と報酬が得られる暗示があります。不当な扱いを受けている場合は毅然とした態度で主張してください。"],
+    "吊られた男": ["吊られた男", "一時的な停滞や足踏みの時期ですが、これは無駄な時間ではありません。今のポジションで学べることを最大限に吸収する時期です。", "焦らず現状を受け入れ、準備を整えることが次の大きなステップへの土台になります。"],
+    "死神": ["死神", "仕事における大きな変化や転換の時期。これまでのやり方や職場環境が大きく変わる可能性がありますが、それは新たな成長への扉が開くサインです。", "古いものに執着せず、変化を前向きに受け入れることでキャリアが新たな段階に進みます。"],
+    "節制": ["節制", "コツコツと着実に積み上げる仕事が評価される時期。バランスよく仕事と休息を取ることで、長期的なパフォーマンスが向上します。", "焦らず、一歩一歩確実に積み重ねることが最終的に大きな成果をもたらします。チームの調整役としても活躍できます。"],
+    "悪魔": ["悪魔", "仕事における執着やストレスを見直す時期。働きすぎや、合わない環境への固執が心身を消耗させていないか確認を。", "本当に自分がやりたい仕事は何かを問い直し、必要なら思い切った方向転換を考える時かもしれません。"],
+    "塔": ["塔", "仕事において予期せぬ大きな変化が訪れるかもしれません。衝撃的な出来事に備えておくことが大切ですが、これは新たな可能性への転換点でもあります。", "ショックを受けても柔軟に対応し、この変化を次のステージへのきっかけとして活かしてください。"],
+    "星": ["星", "仕事における希望と回復の時期。長期的なビジョンを持ち、理想に向かって着実に歩み続けることで夢が現実になります。", "インスピレーションが豊かに湧く時期なので、アイデアをどんどん形にしていきましょう。創造的な仕事に縁があります。"],
+    "月": ["月", "仕事において不確かな状況が続くかもしれません。情報が不明確だったり、方向性が定まらないことも。", "全ての情報が揃うまで重要な判断は待つことが得策です。直感を信じながらも慎重に行動することが大切な時期です。"],
+    "太陽": ["太陽", "仕事において輝かしい成功と認められる時期。努力と才能が開花し、周囲から高く評価されます。昇進や表彰など嬉しい出来事が期待できます。", "自信を持って仕事に臨み、持てる力を存分に発揮してください。あなたの活躍が周囲にも良い影響を与えます。"],
+    "審判": ["審判", "キャリアにおける重要な評価と再出発の時期。過去の仕事の成果が正当に評価され、新たなチャンスが与えられます。", "内なる使命感に従い、より意義のある仕事へと踏み出す覚悟が新たな扉を開きます。"],
+    "世界": ["世界", "仕事において大きな目標が達成される時期。長年の努力が実を結び、キャリアの集大成ともいえる成果が得られます。", "この成功を次なる挑戦への踏み台として、さらなる高みを目指してください。"]
+  },
+  "対人関係": {
+    "愚者": ["愚者", "人間関係において、先入観を持たず新鮮な目で人と向き合う時期です。過去のトラブルや固定観念を手放し、相手をありのままに受け入れることで素晴らしい縁が生まれます。", "オープンな心が新たな繋がりをもたらします。予期せぬところから大切な友人や仲間が現れる可能性があります。"],
+    "魔術師": ["魔術師", "コミュニケーション能力が高まり、言葉で人を動かす力が増しています。プレゼンや交渉、説得が必要な場面で実力を発揮できます。", "人脈を広げるチャンスも多く、積極的な行動が新たな縁を生みます。あなたの言葉と行動が周囲に良い影響を与えます。"],
+    "女教皇": ["女教皇", "人の気持ちを深く読み取る直感が冴えています。言葉の裏にある本音や感情を察する力が高まり、相手への深い理解が生まれます。", "相談役や聞き役として周囲から頼られることが増えるでしょう。静かに寄り添う姿勢が、深い信頼関係を築きます。"],
+    "女帝": ["女帝", "温かく包容力のある態度が周囲の人を引きつけます。与えることを喜びとし、周囲を支援することで深い絆が生まれる時期。", "あなたの愛情深さが人間関係を豊かに育みます。グループや組織においてまとめ役としての活躍も期待できます。"],
+    "皇帝": ["皇帝", "周囲から頼りにされるリーダー的存在となる時期。公正で責任感ある態度が信頼を集めます。", "権威的になりすぎず、相手の意見にも耳を傾けることで、より良い関係が築けます。指導的な役割を担う機会が訪れます。"],
+    "教皇": ["教皇", "信頼できるアドバイザーや師との縁が深まる時期。人生の指針となる言葉や出会いが訪れます。", "あなた自身も誰かのメンターとなり、知識や経験を分かち合うことで深い繋がりが生まれます。礼儀を大切にした誠実な付き合いが信頼関係の基盤となります。"],
+    "恋人": ["恋人", "深い絆で結ばれた関係が育まれる時期。価値観を共にできる友人やパートナーとの縁が深まります。", "お互いを高め合える関係、本当に大切な縁を見極める力が高まっています。心の声に従い、真の繋がりを大切にしてください。"],
+    "戦車": ["戦車", "人間関係における問題や対立を、意志の力で乗り越えられる時期。困難な相手や状況にも正面から向き合うことで、関係が改善されます。", "自分をしっかりコントロールしながら、目指す関係の形に向かって着実に進んでください。強引すぎる態度は逆効果です。"],
+    "力": ["力", "難しい人間関係も、思いやりと忍耐で乗り越えられる時期。感情的にならず、穏やかに相手に接することで、頑固な心も少しずつ動かせます。", "相手の弱さや欠点を受け入れる包容力が、深い信頼関係を生みます。あなたの優しさが周囲に安心感をもたらします。"],
+    "隠者": ["隠者", "広く浅い付き合いより、少数でも深い関係を大切にする時期。人と一定の距離を置くことで、本当に必要な縁が見えてきます。", "孤独を恐れず、自分自身と向き合う時間を持つことで人間関係における真の価値観が確立されます。質の高い縁を大切に育んでください。"],
+    "運命の輪": ["運命の輪", "人間関係における大きな転換点が訪れています。新たな出会いや、既存の関係における変化が期待できます。", "変化を前向きに受け入れ、新たな縁を大切にすることが豊かな人間関係を育みます。偶然の出会いが人生に大きな影響をもたらすことも。"],
+    "正義": ["正義", "公正で誠実な態度が人間関係の基盤となる時期。相手に対して正直に、かつ公平に接することで真の信頼が生まれます。", "バランスの取れた対等な関係を築くことが長続きする絆に繋がります。不公平な扱いを受けている場合は毅然とした態度で意見を述べてください。"],
+    "吊られた男": ["吊られた男", "人間関係において一歩引いて状況を見守る時期。積極的に動くより、相手のペースに合わせることが関係改善に繋がります。", "異なる視点から関係を見直すことで、今まで気づかなかった相手の良さや関係の本質が見えてきます。"],
+    "死神": ["死神", "人間関係における変容の時期。自然と離れていく縁と、新たに結ばれる縁があります。", "古い関係が終わることで、より良い新たな縁が生まれる準備が整います。終わりを迎える関係を無理に繋ぎ止めようとせず、自然な流れに任せてください。"],
+    "節制": ["節制", "バランスの取れた人間関係を築く時期。与えすぎず、受け取りすぎず、お互いが心地よい距離感を保つことが大切です。", "仲介役や調停役として活躍できる時期でもあります。あなたの穏やかな存在が周囲に安定をもたらします。"],
+    "悪魔": ["悪魔", "人間関係における依存や執着を見直す時期。特定の人物に過度に依存したり、不健全な関係に縛られていないか確認を。", "真の繋がりは互いを自由にするものです。解放されることで、より健全で自由な関係が築けます。"],
+    "塔": ["塔", "人間関係において予期せぬ変化や衝撃的な出来事が起こるかもしれません。しかしこれは偽りの関係が崩れ、本当の縁が残るための過程です。", "混乱の中でも誠実さを失わず、嵐を乗り越えることで、真に信頼できる人間関係が残ります。"],
+    "星": ["星", "人間関係において希望と癒しの時期。傷ついた関係が修復され、新たな素晴らしい縁が結ばれます。", "人との繋がりに感謝しながら縁を大切に育んでください。あなたの存在が周囲の人々に希望と安らぎをもたらします。"],
+    "月": ["月", "人間関係において不明確な状況が続くかもしれません。相手の本心が見えにくく、誤解や行き違いが生じやすい時期。", "感情的になりやすいので、大切な判断は冷静になってから行うことが大切です。全体像が明らかになるまで待ちましょう。"],
+    "太陽": ["太陽", "明るく前向きなエネルギーが人を引きつける時期。自然体で楽しく過ごすことで、素晴らしい縁が広がります。", "笑顔と誠実さが最高の人間関係を生みます。ポジティブなあなたの周りに自然と人が集まり、豊かな人間関係が築かれます。"],
+    "審判": ["審判", "人間関係における重要な転換点と再評価の時期。過去に疎遠になった人との縁が復活したり、長年の誤解が解けることも。", "自分の人間関係のパターンを振り返り、より成熟した関わり方に変わる機会です。過去を許し、新たなステージでの人間関係を築いてください。"],
+    "世界": ["世界", "人間関係において豊かな完成と充実の時期。長年築いてきた関係が花開き、深い絆で結ばれた仲間や友人に囲まれます。", "人との繋がりが人生に大きな喜びと充実感をもたらす時期。感謝の気持ちを持って大切な縁を慈しんでください。"]
+  }
+};
+
+var selectedTheme = '';
+var selectedSpread = '';
+var selectedCardCount = 1;
+var selectedCards = [];
+var dealRound = 0;
+var currentShuffled = [];
+
+function init() {
+  document.getElementById('btn-fortune').addEventListener('click', function(){ selectTheme(this, '運勢'); });
+  document.getElementById('btn-love').addEventListener('click', function(){ selectTheme(this, '恋愛'); });
+  document.getElementById('btn-work').addEventListener('click', function(){ selectTheme(this, '仕事'); });
+  document.getElementById('btn-relation').addEventListener('click', function(){ selectTheme(this, '対人関係'); });
+  document.getElementById('theme-next').addEventListener('click', goToSpread);
+  document.getElementById('btn-one').addEventListener('click', function(){ selectSpread(this, 'ワンオラクル', 1); });
+  document.getElementById('spread-next').addEventListener('click', goToDraw);
+  document.getElementById('deck-single').addEventListener('click', onDeckTap);
+  document.getElementById('btn-retry').addEventListener('click', resetOracle);
+  document.getElementById('btn-top').addEventListener('click', function(){ window.location.href='arcana-forest.html'; });
+
+  var container = document.getElementById('particles');
+  for (var i = 0; i < 20; i++) {
+    var p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.width = p.style.height = (Math.random() * 2 + 1) + 'px';
+    p.style.animationDuration = (Math.random() * 15 + 10) + 's';
+    p.style.animationDelay = (Math.random() * 10) + 's';
+    container.appendChild(p);
+  }
+}
+
+function selectTheme(btn, theme) {
+  document.querySelectorAll('.theme-btn').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  selectedTheme = theme;
+  document.getElementById('theme-next').disabled = false;
+}
+
+function selectSpread(btn, spread, count) {
+  document.querySelectorAll('.spread-select-btn:not(.locked)').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  selectedSpread = spread;
+  selectedCardCount = count;
+  document.getElementById('spread-next').disabled = false;
+}
+
+function goToSpread() {
+  document.getElementById('phase-theme').classList.remove('active');
+  document.getElementById('phase-spread').classList.add('active');
+}
+
+function goToDraw() {
+  document.getElementById('phase-spread').classList.remove('active');
+  document.getElementById('phase-draw').classList.add('active');
+}
+
+function onDeckTap() {
+  if (dealRound !== 0) return;
+  dealRound = 1;
+
+  var deck = document.getElementById('deck-single');
+  var grid = document.getElementById('cards-grid');
+  var hint = document.getElementById('deck-hint');
+  var instruction = document.getElementById('draw-instruction');
+
+  deck.style.display = 'none';
+  grid.innerHTML = '';
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = 'repeat(3, 90px)';
+
+  var pool;
+
+  if (selectedCardCount === 2) {
+    var shuffledCombos = combos.slice().sort(function(){ return Math.random() - 0.5; });
+    var picked = shuffledCombos.slice(0, 4);
+    var cardNames = [];
+    picked.forEach(function(cb) {
+      cardNames.push(cb.cards[0]);
+      cardNames.push(cb.cards[1]);
+    });
+    // 9枚目は5番目のコンビの片方
+    cardNames.push(shuffledCombos[4].cards[0]);
+
+    pool = cardNames.map(function(name) {
+      for (var i = 0; i < majorArcana.length; i++) {
+        if (majorArcana[i].name === name) return majorArcana[i];
+      }
+    }).sort(function(){ return Math.random() - 0.5; });
+
+  } else {
+    pool = majorArcana.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, 9);
+  }
+
+  pool.forEach(function(card, i) {
+    var el = createCardEl(card);
+    grid.appendChild(el);
+    setTimeout(function(e){ e.classList.add('deal-in'); }, i * 120, el);
+  });
+
+  var totalDealTime = 9 * 120 + 400;
+  setTimeout(function() {
+    instruction.textContent = 'タロットを1枚選んでください';
+    hint.textContent = '';
+    grid.querySelectorAll('.tarot-card').forEach(function(el) {
+      el.addEventListener('click', function() {
+        handleCardClick(el, grid);
+      });
+    });
+  }, totalDealTime);
+}
+
+function handleTwoOracleClick(cardEl, grid) {}
+
+function handleCardClick(cardEl, grid) {
+  if (cardEl.classList.contains('flipped')) return;
+  if (selectedCards.length >= selectedCardCount) return;
+
+  var cardName = cardEl.dataset.name;
+  var card = null;
+  for (var i = 0; i < majorArcana.length; i++) {
+    if (majorArcana[i].name === cardName) { card = majorArcana[i]; break; }
+  }
+  if (!card) return;
+
+  cardEl.classList.add('flipped', 'selected-card');
+  selectedCards.push(card);
+
+  var instruction = document.getElementById('draw-instruction');
+
+  if (selectedCardCount === 2 && selectedCards.length === 1) {
+    instruction.textContent = 'もう1枚選んでください';
+  } else if (selectedCards.length >= selectedCardCount) {
+    setTimeout(showResult, 800);
+  }
+}
+
+function createCardEl(card) {
+  var el = document.createElement('div');
+  el.className = 'tarot-card';
+  el.dataset.name = card.name;
+  el.innerHTML =
+    '<div class="card-inner">' +
+      '<div class="card-back"><div class="cbd2"><svg viewBox="0 0 60 60" fill="none"><circle cx="30" cy="30" r="28" stroke="#c9a84c" stroke-width="0.5"/><polygon points="30,5 55,43 5,43" stroke="#c9a84c" stroke-width="0.5" fill="none"/><polygon points="30,55 5,17 55,17" stroke="#c9a84c" stroke-width="0.5" fill="none"/></svg></div></div>' +
+      '<div class="card-front"><p class="cn">' + card.num + '</p><p class="cs">' + card.symbol + '</p><p class="cname">' + card.name + '</p></div>' +
+    '</div>';
+  return el;
+}
+
+function setCardHandlers(grid) {
+  grid.querySelectorAll('.tarot-card:not(.flipped)').forEach(function(el) {
+    var clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+  });
+  grid.querySelectorAll('.tarot-card:not(.flipped)').forEach(function(el) {
+    el.addEventListener('click', function() {
+      handleCardClick(el, grid);
+    });
+  });
+}
+
+function handleCardClick(cardEl, grid) {
+  if (cardEl.classList.contains('flipped')) return;
+  if (selectedCards.length >= selectedCardCount) return;
+
+  var cardName = cardEl.dataset.name;
+  var card = null;
+  for (var i = 0; i < majorArcana.length; i++) {
+    if (majorArcana[i].name === cardName) { card = majorArcana[i]; break; }
+  }
+  if (!card) return;
+
+  cardEl.classList.add('flipped', 'selected-card');
+  selectedCards.push(card);
+
+  var instruction = document.getElementById('draw-instruction');
+
+  if (selectedCardCount === 2 && selectedCards.length === 1) {
+    // 1枚目確定。コンビ相手を探す
+    var partners = [];
+    for (var j = 0; j < combos.length; j++) {
+      var cb = combos[j];
+      if (cb.cards[0] === card.name) partners.push(cb.cards[1]);
+      else if (cb.cards[1] === card.name) partners.push(cb.cards[0]);
+    }
+    // パートナーからランダムに1枚
+    var partnerName = partners[Math.floor(Math.random() * partners.length)];
+    var partnerCard = null;
+    for (var k = 0; k < majorArcana.length; k++) {
+      if (majorArcana[k].name === partnerName) { partnerCard = majorArcana[k]; break; }
+    }
+
+    // ダミー8枚（1枚目でも相手でもないカード）
+    var dummies = majorArcana.filter(function(mc) {
+      return mc.name !== card.name && mc.name !== partnerName;
+    }).sort(function(){ return Math.random() - 0.5; }).slice(0, 8);
+
+    // パートナー＋ダミーをシャッフルして裏向きカードに割り当て
+    var newPool = [partnerCard].concat(dummies).sort(function(){ return Math.random() - 0.5; });
+    var unflipped = grid.querySelectorAll('.tarot-card:not(.flipped)');
+    unflipped.forEach(function(el, idx) {
+      el.dataset.name = newPool[idx].name;
+    });
+
+    instruction.textContent = 'タロットを1枚選んでください';
+    setTimeout(function() { setCardHandlers(grid); }, 50);
+
+  } else if (selectedCards.length >= selectedCardCount) {
+    setTimeout(showResult, 800);
+  }
+}
+
+function showResult() {
+  document.getElementById('phase-draw').classList.remove('active');
+  document.getElementById('phase-result').classList.add('active');
+  document.getElementById('result-spread-label').textContent = selectedSpread.toUpperCase();
+  document.getElementById('result-theme-label').textContent = selectedTheme + 'の鑑定';
+
+  var row = document.getElementById('result-cards-row');
+  row.innerHTML = selectedCards.map(function(card, idx) {
+    return (idx > 0 ? '<div style="width:1px;height:48px;background:rgba(201,168,76,0.3)"></div>' : '') +
+      '<div class="result-card-info">' +
+        '<p class="result-card-num">' + card.num + '</p>' +
+        '<p class="result-card-name">' + card.name + '</p>' +
+        '<p style="font-family:Cinzel,serif;font-size:0.62rem;color:var(--gold-dim);letter-spacing:0.15em;margin-top:4px">' + card.en + '</p>' +
+      '</div>';
+  }).join('');
+
+  generateReading();
+}
+
+var combos = [
+  {key:"死神_星",cards:["死神","星"],readings:{"運勢":{title:"死神 × 星",body:"古いサイクルが終わりを告げ、その先に希望の光が灯り始めています。手放すことへの恐れは自然なことですが、死神が示す終焉は破壊ではなく浄化。星が照らす未来は、あなたが過去を手放した分だけ輝きを増します。今は変容の只中にいる時期。焦らず、崩れゆくものを見送りながら、遠くに輝く星の光を信じて進んでください。",advice:"執着しているものを一つだけ手放す決断をしてください。その空白に、新しい運気が流れ込んできます。"},"恋愛":{title:"死神 × 星",body:"終わりかけている関係、あるいは古い恋愛のパターンに別れを告げる時が来ています。それは悲しいことではなく、本当の愛へ向かうための必要な変容です。傷が癒えた先に、今まで出会ったことのないような深い縁が待っています。",advice:"過去の恋愛への後悔や執着を、今日だけは手放してみてください。心が軽くなった分だけ、新しい愛が入ってくる余白が生まれます。"},"仕事":{title:"死神 × 星",body:"今のキャリアや仕事のやり方に大きな転換点が訪れています。慣れ親しんだ環境が終わりを迎えることへの不安は当然ですが、星のカードはその先に理想の仕事の形が待っていることを示しています。",advice:"今の仕事で手放すべきことを一つ明確にし、それに代わる新しいアプローチを試みてください。変化を恐れないことが成功の鍵です。"},"対人関係":{title:"死神 × 星",body:"自然と離れていく縁と、新たに結ばれる縁が交差する時期です。終わりゆく関係を惜しむ気持ちは理解できますが、それはより良い縁を受け取るための準備。癒しと希望のエネルギーが、あなたの人間関係を豊かに再生させていきます。",advice:"疎遠になっていた大切な人に、今日一つだけメッセージを送ってみてください。新たな繋がりの扉が開かれます。"}}},
+  {key:"塔_審判",cards:["塔","審判"],readings:{"運勢":{title:"塔 × 審判",body:"突然の崩壊と、その後に訪れる覚醒。この二枚は激しい変化の後に訪れる魂の目覚めを示しています。積み上げてきたものが崩れ落ちる衝撃の後、あなたは本当に大切なものだけを手に残すことになるでしょう。崩壊は終わりではなく、より本質的な自分へと目覚めるための洗礼です。",advice:"今起きている混乱を、自分の本質を見つめ直す機会として受け取ってください。嵐の後に残るものこそが、あなたの真の強さです。"},"恋愛":{title:"塔 × 審判",body:"恋愛における大きな衝撃の後、魂の深いところからの問いかけが訪れています。偽りの関係や見せかけの愛が崩れ落ち、その廃墟の中から本当の愛の意味に目覚める時期です。この痛みは、より誠実な愛の形へあなたを導くための試練です。",advice:"恋愛においてずっと正直になれなかったことを、自分自身に向き合って認めてみてください。その誠実さが、次の真実の愛への扉を開きます。"},"仕事":{title:"塔 × 審判",body:"職場や仕事上の突然の大変化の後、本当に自分がやりたい仕事への目覚めが来ています。崩れ去ったものの中に、実は長年気づかなかった問題があったはずです。衝撃の後だからこそ、真の使命に気づける時期です。",advice:"今の混乱を乗り越えた先にやりたいことを、一つだけ書き出してみてください。それがあなたの次のキャリアの道標になります。"},"対人関係":{title:"塔 × 審判",body:"人間関係における衝撃的な出来事が、長年気づかなかった関係の本質を明らかにしています。傷ついた後だからこそ、より深い理解と真の縁が結ばれる準備が整っています。",advice:"傷つけた相手、あるいは傷ついた経験を、今日一度だけ心の中で許してみてください。その許しが関係の再生を促します。"}}},
+  {key:"愚者_世界",cards:["愚者","世界"],readings:{"運勢":{title:"愚者 × 世界",body:"始まりと完成が同時に示されるこの組み合わせは、あなたの人生における大きなサイクルの転換点を意味しています。愚者の純粋な出発点から始まった旅が、世界のカードで美しい完成を迎えようとしています。そして完成した瞬間、また新たな愚者として次の旅が始まる。この無限の循環の中に、あなたの真の運勢が宿っています。",advice:"一つのことを完成させてから、次の新しい挑戦に踏み出してください。完成の喜びが、次の旅への最高の出発点となります。"},"恋愛":{title:"愚者 × 世界",body:"恋愛における一つの完結と、全く新しい愛の始まりが同時に訪れています。過去の恋愛で学んだ全てを統合した上で、白紙の心で新たな縁に向かう準備が整っています。あなたは今、最も魅力的な状態にあります。",advice:"過去の恋愛から学んだことを三つ挙げてみてください。その学びを胸に、新しい愛に向かって軽やかに踏み出しましょう。"},"仕事":{title:"愚者 × 世界",body:"大きなプロジェクトや目標の完成と、次の新たな挑戦への出発が重なる時期です。完成の喜びを十分に味わいながら、同時に新しい可能性へと心を開いてください。",advice:"今取り組んでいることを最高の形で完成させることに全力を注いでください。その完成が、次の大きなキャリアの扉を開きます。"},"対人関係":{title:"愚者 × 世界",body:"人間関係における一つの完成と、新たな出会いへの開放が同時に起きています。先入観を手放し、世界が広がるような豊かな人間関係の新章が始まろうとしています。",advice:"大切にしてきた関係への感謝を伝え、同時に新しい出会いにオープンでいてください。感謝と開放が、豊かな縁をもたらします。"}}},
+  {key:"太陽_月",cards:["太陽","月"],readings:{"運勢":{title:"太陽 × 月",body:"意識と無意識、光と影が交差する複雑な時期を示しています。表面では明るく輝かしいエネルギーが満ちているにもかかわらず、水面下には不安や見えない何かが潜んでいます。昼の太陽と夜の月を両方受け入れることで、真の豊かさが生まれます。",advice:"明るく振る舞いながらも、自分の中にある不安や疑問を無視しないでください。直感と理性の両方を使って進むことが最善の道です。"},"恋愛":{title:"太陽 × 月",body:"恋愛において、喜びと不安が同居している状態を示しています。月が示す幻想に惑わされず、太陽の明朗さで関係を照らすことが大切。相手の表の顔だけでなく、隠れた本心にも目を向けながら愛を育んでいきましょう。",advice:"恋愛において感じている不安を、正直に相手に話してみてください。光の中に出すことで、幻想は消え本質が見えてきます。"},"仕事":{title:"太陽 × 月",body:"表面的には順調に見える仕事の流れの中に、まだ明らかになっていない情報や見えない課題が潜んでいます。自信と慎重さのバランスが、この時期の仕事における成功の鍵となります。",advice:"今進めているプロジェクトの表面だけでなく、見えていないリスクも確認してください。慎重な確認が大きなミスを防ぎます。"},"対人関係":{title:"太陽 × 月",body:"人間関係において、明るい表の顔と、その裏に隠れた本音が交差する状況です。太陽の正直さで本音を語り、月の繊細さで相手の気持ちを察することで、真の理解が生まれます。",advice:"大切な人に、今まで言えなかった本音を一つだけ伝えてみてください。誠実な言葉が関係に光をもたらします。"}}},
+  {key:"魔術師_隠者",cards:["魔術師","隠者"],readings:{"運勢":{title:"魔術師 × 隠者",body:"行動する力と内省する知恵、この二つのエネルギーが求められている時期です。外に向けて力を発揮しながらも、定期的に自分の内側に立ち返ることで、あなたの行動に深みと方向性が生まれます。",advice:"行動を起こす前に、少しだけ立ち止まって自分の本当の望みを確認してください。内省と行動を交互に繰り返すことが最善の運勢を引き出します。"},"恋愛":{title:"魔術師 × 隠者",body:"積極的にアプローチする自分と、相手との関係を深く見つめる自分の両方が必要な時期です。孤独の時間に自分が本当に求める愛の形を問い直してください。",advice:"好きな相手へのアプローチと、自分の気持ちを整理する一人の時間を、バランスよく設けてください。深さが真の愛を育てます。"},"仕事":{title:"魔術師 × 隠者",body:"優れたスキルと実行力を持つあなたが、さらなる専門性の深化を求められています。行動と内省の循環が、あなたの仕事における真の実力を磨きます。",advice:"今取り組んでいる仕事の専門性をさらに深める時間を週に一度設けてください。その積み重ねが、他者と差別化される真の実力となります。"},"対人関係":{title:"魔術師 × 隠者",body:"コミュニケーション能力を活かして積極的に人と関わりながら、一方で一人の時間で人間関係について深く考える必要があります。",advice:"多くの人と関わる時間と、一人で関係について振り返る時間を意識的に作ってください。深さのある人間関係が真の支えとなります。"}}},
+  {key:"戦車_吊られた男",cards:["戦車","吊られた男"],readings:{"運勢":{title:"戦車 × 吊られた男",body:"前進する力と、立ち止まる知恵が同時に求められる時期です。この停滞は失敗ではなく、新たな視点を得るための必要な間。立ち止まった時に見えてくるものが、次の前進の方向を正してくれます。",advice:"急いで動く前に、一度立ち止まって現状を別の角度から見てみてください。その新しい視点が、より確実な前進への道を示してくれます。"},"恋愛":{title:"戦車 × 吊られた男",body:"恋愛に積極的に突き進みたい気持ちと、何かを待つべきという感覚が葛藤しています。相手のペースを尊重しながら待つことが、長期的には関係を深める近道です。",advice:"恋愛において今すぐ動きたい衝動を少し抑え、相手の状況や気持ちが整うのを辛抱強く待ってみてください。その待ちが相手の信頼を得ます。"},"仕事":{title:"戦車 × 吊られた男",body:"仕事を前進させたいエネルギーと、状況が思うように動かないもどかしさが交差しています。焦って動くより、今できる準備を整えることが、次の大きな前進への確実な土台となります。",advice:"今すぐ結果を求めるのをやめ、準備と学びに集中する時間に切り替えてください。十分な準備の後の前進は、誰も止められない勢いを持ちます。"},"対人関係":{title:"戦車 × 吊られた男",body:"人間関係において積極的に動きたい気持ちと、状況が許さないもどかしさが混在しています。あなたが一歩引くことで、関係が自然と良い方向へ動き始める可能性があります。",advice:"関係を変えようと焦るのをやめ、相手が自然に動くのを待ってみてください。あなたの余裕ある態度が、相手の心を動かします。"}}},
+  {key:"魔術師_女教皇",cards:["魔術師","女教皇"],readings:{"運勢":{title:"魔術師 × 女教皇",body:"意志と直感、行動と洞察が完璧に調和する時期を示す、非常に強力な組み合わせです。理性と感性の両方を使いこなすことで、今まで達成できなかったことへの道が開かれます。",advice:"何かを決断する時は、論理的な分析と直感的な感覚の両方を必ず確認してください。両方がYesと言う選択が、最善の結果をもたらします。"},"恋愛":{title:"魔術師 × 女教皇",body:"言葉と行動で愛を表現する力と、相手の気持ちを深く読み取る直感が合わさっています。言葉で伝えながら、言葉にならない気持ちも感じ取る。その絶妙なバランスが深い愛を育みます。",advice:"好きな相手に言葉で気持ちを伝えながら、相手が言葉にしていない気持ちにも敏感でいてください。言葉と沈黙の両方に愛があります。"},"仕事":{title:"魔術師 × 女教皇",body:"優れた実行力と深い洞察力が同時に発揮できる最高の時期です。この二つの力を組み合わせることで、他者が気づかない解決策や機会を見つけ出すことができます。",advice:"仕事において直感で気になっていることを、今日だけは論理的に検証してみてください。直感と論理の合致するところに最善の答えがあります。"},"対人関係":{title:"魔術師 × 女教皇",body:"言葉の力と、言葉を超えた理解力が融合した時期です。話す力と聴く力、どちらも最高の状態にある今、大切な関係をより深いものに育てる絶好の機会です。",advice:"大切な人と話す時間と、ただ一緒にいる静かな時間を両方大切にしてください。言葉と沈黙の両方が、深い絆を育てます。"}}},
+  {key:"皇帝_女帝",cards:["皇帝","女帝"],readings:{"運勢":{title:"皇帝 × 女帝",body:"理性と感性、秩序と豊かさが完璧に調和する、非常に吉兆の組み合わせです。強いリーダーシップと温かい包容力を兼ね備えたこの時期、周囲の人々もあなたの元に自然と集まってきます。",advice:"計画を立てて実行しながらも、硬直せず流れに乗る柔軟さも忘れないでください。理性と感性のバランスが最大の成果をもたらします。"},"恋愛":{title:"皇帝 × 女帝",body:"安定した信頼と温かい愛情が融合する、関係における豊かな実りの時期を示しています。守る強さと包み込む温かさ、この二つを持つあなたの周りに、深い縁が育まれています。",advice:"相手を守る強さと、相手の全てを受け入れる温かさを意識して表現してください。その両方がそろった時、愛は最も深く根付きます。"},"仕事":{title:"皇帝 × 女帝",body:"組織力とリーダーシップ、そして創造的な豊かさが合わさる最高の時期です。組織をまとめながら、同時に革新的なアプローチで成果を出すことができるキャリアにおける絶好の機会です。",advice:"現在のプロジェクトを体系的に整理しながら、同時に新しいアイデアを取り入れることを恐れないでください。構造と創造の融合が最大の成果を生みます。"},"対人関係":{title:"皇帝 × 女帝",body:"周囲をまとめるリーダーシップと、全ての人を温かく受け入れる包容力が融合しています。与えることと守ることの両方ができる存在として、深く慕われる時期です。",advice:"グループの中で率先して行動しながら、誰一人置き去りにしない温かさを忘れないでください。その姿勢が真のリーダーを育てます。"}}},
+  {key:"恋人_正義",cards:["恋人","正義"],readings:{"運勢":{title:"恋人 × 正義",body:"心の求めと、正しい判断のバランスが問われる時期です。恋人のカードが示す深い縁と、正義のカードが示す誠実さが融合する時、あなたの決断は長期にわたって最良の結果をもたらします。",advice:"重要な決断の際は、心が求めるものと、それが本当に正しいかの両方を確認してください。両方がYesならば、迷わず進んでください。"},"恋愛":{title:"恋人 × 正義",body:"深い愛情と、誠実さへの問いかけが重なる時期です。真の愛は互いを尊重し、正直であることの上に成り立ちます。心と誠実さが一致する関係こそが、長続きする深い縁です。",advice:"恋愛において、自分と相手の両方に誠実であるかを確認してください。正直さの上に築かれた愛は、どんな試練にも揺るぎません。"},"仕事":{title:"恋人 × 正義",body:"本当にやりたい仕事への選択と、それが正当に評価される環境への問いかけが同時に訪れています。心が求める仕事と、正当な報酬や評価のバランスを見極める重要な時期です。",advice:"今の仕事が自分の情熱と正当な評価の両方を満たしているか確認してください。どちらかが欠けているなら、改善を求める行動を起こしましょう。"},"対人関係":{title:"恋人 × 正義",body:"深い絆で結ばれた関係と、公正で誠実な付き合い方の両方が問われています。心から大切に思う相手だからこそ、誠実に正直に向き合うことが真の深い関係を育てます。",advice:"大切な人との関係において、言えていなかった正直な気持ちを伝えてください。誠実さは時に痛みを伴いますが、それが真の絆を強くします。"}}},
+  {key:"力_悪魔",cards:["力","悪魔"],readings:{"運勢":{title:"力 × 悪魔",body:"内なる強さと、何かへの執着や誘惑が同時に示されています。執着を手放す勇気こそが、本来の強さを解放する鍵。恐れや欲求に打ち勝つ内なる力が、今のあなたに宿っています。",advice:"自分を縛っていると感じるものを一つ特定し、それに対して内なる力で向き合ってください。执着を手放した時、本来の強さが輝き始めます。"},"恋愛":{title:"力 × 悪魔",body:"恋愛において強い情熱や執着が渦巻いていますが、その奥に内なる強さも宿っています。真の愛は束縛ではなく解放。内なる強さを使って執着を手放す時、より自由で深い愛の形が生まれます。",advice:"恋愛において相手に求めすぎていることを一つ手放してみてください。解放した分だけ、関係はより自然で深いものになります。"},"仕事":{title:"力 × 悪魔",body:"仕事における粘り強い力と、何かへの過度な執着が同時に現れています。内なる強さで執着を乗り越えた時、より広い可能性が見えてきます。",advice:"仕事でこだわり続けていることを一度手放し、別のアプローチを試してみてください。柔軟性が、より大きな成果への道を開きます。"},"対人関係":{title:"力 × 悪魔",body:"人間関係において、強い感情や執着が働いています。内なる強さを使って健全な距離感を保つことが、長期的に良い関係を育む鍵です。",advice:"特定の人間関係で感じている執着や依存を、内なる強さで少しだけ手放してみてください。自立した上での繋がりが、最も深い絆を生みます。"}}},
+  {key:"運命の輪_節制",cards:["運命の輪","節制"],readings:{"運勢":{title:"運命の輪 × 節制",body:"大きな変化の波が来ていますが、焦らず着実に対応することが求められています。急激な変化に流されず、自分のペースを保ちながら流れに乗る。そのバランス感覚が今の運勢の鍵です。",advice:"大きな変化が来ても慌てず、一つずつ着実に対応してください。バランスを保ちながら変化に乗ることが、最善の結果をもたらします。"},"恋愛":{title:"運命の輪 × 節制",body:"恋愛における転機が訪れていますが、焦らず穏やかに関係を育てることが大切です。流れを信じながらも、自分のペースを保つ。その余裕が相手を安心させます。",advice:"恋愛に転機を感じても、焦らず自然なペースで関係を深めてください。急ぎすぎないことが、深い縁を育む最善の方法です。"},"仕事":{title:"運命の輪 × 節制",body:"キャリアの大きな転換点が訪れていますが、冷静にバランスを保ちながら進むことが求められています。大きな変化も、節制の精神で一歩ずつ対応することで、確実な成果に変えられます。",advice:"キャリアの転機に積極的に対応しながらも、無理のないペースで進んでください。着実さが確実な成功をもたらします。"},"対人関係":{title:"運命の輪 × 節制",body:"人間関係における大きな変化が訪れていますが、感情的にならずバランスを保つことが大切です。変化の波に飲み込まれず、自分の軸を保ちながら柔軟に対応してください。",advice:"人間関係の変化に動揺せず、穏やかに対応してください。バランスを保ったあなたの態度が、周囲の人々を安心させ、良い関係を育みます。"}}},
+  {key:"教皇_審判",cards:["教皇","審判"],readings:{"運勢":{title:"教皇 × 審判",body:"伝統的な知恵と、魂の目覚めが交差する深い時期です。過去の教えを礎として、より高い次元の自分へと進化する転換点に立っています。",advice:"これまでの学びや信念を大切にしながら、同時に内なる声が促す変化を恐れずに受け入れてください。伝統と革新の融合が、真の成長をもたらします。"},"恋愛":{title:"教皇 × 審判",body:"誠実で真摯な愛への姿勢を持ちながら、過去の恋愛パターンからの覚醒が訪れています。長年の信念や価値観に基づきながら、より深い愛の形へと進化することが求められています。",advice:"恋愛において大切にしてきた価値観を振り返りながら、更新すべき点はないか確認してください。成熟した愛の形が、より深い幸せをもたらします。"},"仕事":{title:"教皇 × 審判",body:"これまでのキャリアで積み重ねた実績と経験を礎に、新たな使命への目覚めが訪れています。時代の呼び声に応えて新しい領域へと踏み出す勇気が求められています。",advice:"これまでの仕事で学んだことへの感謝と、次のステージへの挑戦を同時に持ってください。過去の積み重ねが、新たな挑戦の確かな土台となります。"},"対人関係":{title:"教皇 × 審判",body:"長年大切にしてきた人間関係の価値観を持ちながら、関係の在り方についての深い再評価が訪れています。より本質的な繋がりへと進化させる機会が来ています。",advice:"大切にしてきた人間関係の価値観を大切にしながら、さらに深い繋がりを求めて一歩踏み出してください。誠実さは変えず、深さだけを増やしていきましょう。"}}},
+  {key:"星_太陽",cards:["星","太陽"],readings:{"運勢":{title:"星 × 太陽",body:"希望と成功が重なる、この上なく吉兆の組み合わせです。長い間願い続けてきたことが現実になる時期が訪れています。このエネルギーを最大限に活かして、全力で前進してください。",advice:"今こそ夢を現実に変える具体的な行動を起こしてください。希望と活力が最高潮に達している今が、人生最大のチャンスかもしれません。"},"恋愛":{title:"星 × 太陽",body:"恋愛における希望と喜びが同時に満ちる、最高の時期を示しています。傷ついた心が癒え、純粋な喜びで愛を育める状態にあります。あなたの存在自体が、相手を惹きつける輝きを放っています。",advice:"恋愛に対してオープンでポジティブな姿勢でいてください。あなたの希望と喜びのエネルギーが、最高の縁を引き寄せています。"},"仕事":{title:"星 × 太陽",body:"仕事における理想と、輝かしい成果が重なる最高の時期です。希望を持って取り組んできたことが、周囲から高く評価される形で実を結びます。",advice:"今取り組んでいる仕事に最大限の情熱と能力を注いでください。努力が最も報われる時期が来ています。成果を恐れず、全力を出し切ってください。"},"対人関係":{title:"星 × 太陽",body:"人間関係において希望と喜びが溢れる最高の時期です。あなたの明るく温かいエネルギーが周囲の人々を引きつけ、豊かで喜びに満ちた人間関係が広がっています。",advice:"周囲の人々に感謝と喜びを積極的に表現してください。あなたの明るさが伝わることで、さらに豊かな縁が広がっていきます。"}}},
+  {key:"女帝_世界",cards:["女帝","世界"],readings:{"運勢":{title:"女帝 × 世界",body:"豊かさと完成が重なる、実りの時期を示す吉兆の組み合わせです。これまで育ててきたものが完全な形で実を結び、物質的にも精神的にも豊かな完成を迎えています。",advice:"今持っているものへの深い感謝を表現してください。感謝のエネルギーが豊かさをさらに引き寄せ、完成した世界をより輝かしいものにします。"},"恋愛":{title:"女帝 × 世界",body:"愛の豊かさと、関係の完成が重なる時期です。与えることの喜びと、関係の成就が融合したこの時期、あなたの愛は最も豊かで完全な形で輝いています。",advice:"今の関係への深い感謝と満足を、相手に言葉で伝えてください。愛の完成を祝福することが、さらなる豊かさをもたらします。"},"仕事":{title:"女帝 × 世界",body:"仕事における豊かな成果と、大きな目標の達成が重なる最高の時期です。長期にわたるプロジェクトの完成や、キャリアにおける重要な達成が期待できる充実の時期です。",advice:"今の成果に誇りを持ちながら、次の創造的な挑戦への準備を始めてください。完成した実績が、次の大きな目標への確かな土台となります。"},"対人関係":{title:"女帝 × 世界",body:"人間関係における豊かさと完成が融合する時期です。長年育ててきた大切な縁が美しく完成し、深い絆と満足感に包まれています。",advice:"大切な人々への感謝を積極的に伝えてください。育ててきた縁への感謝が、さらに豊かな人間関係の花を咲かせます。"}}},
+  {key:"月_隠者",cards:["月","隠者"],readings:{"運勢":{title:"月 × 隠者",body:"潜在意識の深みと、内なる知恵の探求が重なる神秘的な時期です。この内省と探求の時期に得られる洞察は、表面的な状況が落ち着いた後、大きな力となって現れます。静寂の中に、真実が宿っています。",advice:"今は外に答えを求めず、内側を深く探ってください。瞑想や一人の時間を意識的に作ることで、今見えていない重要な答えが浮かび上がります。"},"恋愛":{title:"月 × 隠者",body:"恋愛において、はっきりしない状況と深い内省が重なっています。幻想と現実を見極めながら、一人の時間に自分の心の声に耳を傾けることで、恋愛における真実が明らかになってきます。",advice:"恋愛について一人でゆっくり考える時間を作ってください。静かな内省の中で、自分が本当に求めているものが見えてきます。"},"仕事":{title:"月 × 隠者",body:"仕事において不明確な状況が続く中、深い内省と独自の探求が求められています。一人で静かに状況を分析することで、他者が見えていない本質が見えてきます。",advice:"不明確な状況の中でも焦らず、一人で深く考える時間を確保してください。その洞察が、状況が明らかになった時の最善の一手を準備します。"},"対人関係":{title:"月 × 隠者",body:"人間関係において見えにくい何かが存在する中、一人で深く関係を振り返る必要があります。静かな内省の後に得られる洞察が、人間関係をより深く豊かなものにします。",advice:"人間関係で気になっていることを、一人でゆっくり振り返る時間を作ってください。内省の中で得た洞察が、関係の改善への道を示してくれます。"}}}
+];
+
+function findCombo(cards) {
+  var names = cards.map(function(c){ return c.name; });
+  for (var i = 0; i < combos.length; i++) {
+    var c = combos[i];
+    if ((c.cards[0] === names[0] && c.cards[1] === names[1]) ||
+        (c.cards[0] === names[1] && c.cards[1] === names[0])) {
+      return c;
+    }
+  }
+  return null;
+}
+
+function generateReading() {
+  var resultText = document.getElementById('result-text');
+  resultText.style.opacity = '0';
+
+  if (selectedCards.length === 2) {
+    var combo = findCombo(selectedCards);
+    if (combo) {
+      var themeKey = selectedTheme;
+      var cr = combo.readings[themeKey] || combo.readings['運勢'];
+      var html =
+        '<span class="rtitle">' + cr.title + '</span>' +
+        cr.body +
+        '<span class="radvice">◆ カードからのアドバイス<br>' + cr.advice + '</span>';
+      resultText.innerHTML = html;
+      setTimeout(function(){ resultText.style.opacity = '1'; }, 100);
+      return;
+    }
+  }
+
+  var html = selectedCards.map(function(card, idx) {
+    var themeData = readings[selectedTheme] || readings['運勢'];
+    var data = themeData[card.name];
+    var title = data ? data[0] : card.name;
+    var body = data ? data[1] : 'カードが示す力があなたの道を照らしています。';
+    var advice = data ? data[2] : '自分の内なる声に耳を傾け、一歩ずつ前進してください。';
+
+    return (idx > 0 ? '<hr style="border:none;border-top:1px solid rgba(201,168,76,0.15);margin:24px 0;">' : '') +
+      '<span class="rtitle">' + title + '</span>' +
+      body +
+      '<span class="radvice">◆ カードからのアドバイス<br>' + advice + '</span>';
+  }).join('');
+
+  resultText.innerHTML = html;
+  setTimeout(function() {
+    resultText.style.opacity = '1';
+  }, 100);
+}
+
+function resetOracle() {
+  selectedTheme = '';
+  selectedSpread = '';
+  selectedCardCount = 1;
+  selectedCards = [];
+  dealRound = 0;
+
+  document.querySelectorAll('.phase').forEach(function(p){ p.classList.remove('active'); });
+  document.getElementById('phase-theme').classList.add('active');
+  document.querySelectorAll('.theme-btn, .spread-select-btn').forEach(function(b){ b.classList.remove('selected'); });
+  document.getElementById('theme-next').disabled = true;
+  document.getElementById('spread-next').disabled = true;
+
+  var deck = document.getElementById('deck-single');
+  deck.style.display = 'block';
+  document.getElementById('cards-grid').style.display = 'none';
+  document.getElementById('cards-grid').innerHTML = '';
+  document.getElementById('deck-hint').textContent = 'タップしてシャッフル';
+  document.getElementById('draw-instruction').textContent = '気持ちを落ち着かせてタロットに触れてください';
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
